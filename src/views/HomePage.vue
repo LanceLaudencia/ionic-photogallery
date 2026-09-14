@@ -24,20 +24,85 @@ import {
   IonContent,
 } from "@ionic/vue";
 
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 
 // Components
 import CameraComponent from "../Components/CameraComponent.vue";
 import PhotoGalleryComponent from "../Components/PhotoGalleryComponent.vue";
 
-// Store photos locally
+// Firebase
+import {
+  ref as firebaseRef,
+  push,
+  onValue,
+} from "firebase/database";
+
+import { database } from "../firebase";
+
+// Store photos
 const photos = ref<string[]>([]);
 
-// Add captured photo to the gallery
-const addPhoto = (photo: string) => {
-  photos.value.push(photo);
+// Convert Blob URL to Base64
+const convertToBase64 = async (blobUrl: string): Promise<string> => {
+  const response = await fetch(blobUrl);
+  const blob = await response.blob();
 
-  console.log("Photo added to gallery!");
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      resolve(reader.result as string);
+    };
+
+    reader.onerror = reject;
+
+    reader.readAsDataURL(blob);
+  });
 };
+
+// Save photo to Firebase Realtime Database
+const addPhoto = async (photo: string) => {
+  try {
+    console.log("Converting photo to Base64...");
+
+    const base64Image = await convertToBase64(photo);
+
+    console.log("Base64 conversion successful");
+
+    const photosRef = firebaseRef(database, "photos");
+
+    await push(photosRef, {
+      imageUrl: base64Image,
+      createdAt: Date.now(),
+    });
+
+    console.log("Photo saved to Firebase!");
+  } catch (error) {
+    console.error("Failed to save photo:", error);
+  }
+};
+
+// Load photos from Firebase
+onMounted(() => {
+  const photosRef = firebaseRef(database, "photos");
+
+  onValue(photosRef, (snapshot) => {
+    const data = snapshot.val();
+
+    if (!data) {
+      photos.value = [];
+      return;
+    }
+
+    photos.value = Object.values(data)
+      .sort(
+        (a: any, b: any) =>
+          b.createdAt - a.createdAt
+      )
+      .map((photo: any) => photo.imageUrl);
+
+    console.log("Photos loaded from Firebase!");
+  });
+});
 </script>
 ```

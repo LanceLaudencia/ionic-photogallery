@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.photogallery.mobile',
-  appName: 'Photo_Gallery',
+  appName: 'photo_gallery',
   webDir: 'dist'
 };
 
